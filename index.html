@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeCollab</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.5/split.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/loader.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.2/socket.io.js"></script>
+</head>
+
+<body class="dark">
+    <!-- Login Page -->
+    <div id="login-container" class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div id="animated-logo">
+                    <div class="logo-circle"></div>
+                    <div class="logo-text">CC</div>
+                </div>
+                <h1 class="login-title">CodeCollab</h1>
+                <p class="login-description">Collaborate on code in real-time</p>
+            </div>
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <div class="switch-container">
+                    <label class="switch">
+                       <input type="checkbox" id="admin-mode">
+                       <span class="slider"></span>
+                   </label>
+                    <span>Admin Mode</span>
+                </div>
+                <div id="room-id-group" class="form-group">
+                    <label for="room-id">Room ID</label>
+                    <input type="text" id="room-id" placeholder="Enter room ID to join">
+                </div>
+                <button type="submit" class="login-button" id="login-button">Join Room</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Editor Page -->
+    <div id="editor-container" class="hidden">
+        <header class="header">
+            <div class="logo">CodeCollab</div>
+            <div class="user-list" id="userList"></div>
+        </header>
+
+        <div class="toolbar">
+            <button id="newFile">New File</button>
+            <button id="saveFile">Save</button>
+            <button id="runCode">Run</button>
+            <button id="changeTheme">Light Theme</button>
+            <button id="shareLink">Share</button>
+            <button id="toggleAnnotations" class="feature-toggle"><i class="fas fa-comment-alt"></i> Annotations</button>
+            <button id="toggleDebug" class="feature-toggle"><i class="fas fa-bug"></i> Debug</button>
+            <div id="fileOwnerIndicator" class="file-owner-indicator"></div>
+        </div>
+
+        <div class="main-layout">
+            <div class="top-layout">
+                <aside class="file-panel">
+                    <h3>Files</h3>
+                    <ul id="fileList"></ul>
+                    <button id="addFile">+ Add File</button>
+                    <button id="addFolder">+ Add Folder</button>
+                </aside>
+                <section class="code-editor" id="editorContainer"></section>
+
+                <!-- Annotations Panel -->
+                <aside id="annotationsPanel" class="annotations-panel">
+                    <div class="panel-header">
+                        <h3>Annotations</h3>
+                        <button id="addAnnotation" class="panel-action-btn"><i class="fas fa-plus"></i> Add</button>
+                    </div>
+                    <div id="annotationsList" class="annotations-list"></div>
+                </aside>
+
+                <!-- Debug Panel -->
+                <aside id="debugPanel" class="debug-panel">
+                    <div class="panel-header">
+                        <h3>Debugging</h3>
+                    </div>
+                    <div class="debug-controls" id="debugControls">
+                        <button id="startDebug" class="debug-btn"><i class="fas fa-bug"></i> Start</button>
+                        <button id="stopDebug" class="debug-btn" disabled><i class="fas fa-stop"></i> Stop</button>
+                        <button id="stepOver" class="debug-btn" disabled><i class="fas fa-step-forward"></i> Over</button>
+                        <button id="stepInto" class="debug-btn" disabled><i class="fas fa-level-down-alt"></i> Into</button>
+                        <button id="stepOut" class="debug-btn" disabled><i class="fas fa-level-up-alt"></i> Out</button>
+                        <button id="continue" class="debug-btn" disabled><i class="fas fa-play"></i> Continue</button>
+                    </div>
+                    <div class="debug-section">
+                        <h4>Breakpoints</h4>
+                        <div id="breakpointsList" class="breakpoints-list"></div>
+                    </div>
+                    <div class="debug-section">
+                        <h4>Variables</h4>
+                        <div id="variablesList" class="variables-list"></div>
+                    </div>
+                    <div class="debug-section">
+                        <h4>Call Stack</h4>
+                        <div id="callStackList" class="call-stack-list"></div>
+                    </div>
+                </aside>
+            </div>
+
+            <!-- Terminal Container -->
+            <div class="terminal-container" id="terminalContainer">
+                <div class="terminal-header">
+                    <div class="terminal-tabs" id="terminalTabs"></div>
+                    <div class="terminal-actions">
+                        <button id="addTerminal" class="terminal-action-btn"><i class="fas fa-plus"></i></button>
+                        <select id="shellSelect" class="shell-select">
+                            <option value="bash">Bash</option>
+                            <option value="powershell">PowerShell</option>
+                            <option value="cmd">CMD</option>
+                            <option value="zsh">Zsh</option>
+                        </select>
+                        <select id="terminalTheme" class="terminal-theme-select">
+                            <option value="dark">Dark</option>
+                            <option value="light">Light</option>
+                            <option value="retro">Retro</option>
+                            <option value="matrix">Matrix</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Terminal content will be dynamically added here -->
+            </div>
+
+            <div class="output-console">
+                <h3>Output</h3>
+                <div id="consoleOutput">Run your code to see the output here...</div>
+
+                <!-- Terminal Input Section -->
+                <div id="terminalInputSection" class="terminal-input-section" style="display: none;">
+                    <div class="terminal-prompt">
+                        <span class="terminal-prompt-symbol">$</span>
+                        <input type="text" id="terminalInput" class="terminal-input" placeholder="Enter input here...">
+                    </div>
+                    <button id="sendInput" class="terminal-send-btn">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <button id="chatToggle" class="chat-toggle" aria-label="Open chat" aria-expanded="false">
+           <i class="fas fa-comments"></i>
+       </button>
+
+        <aside id="chatPanel" class="chat-panel">
+            <div class="chat-content">
+                <h3>Chat</h3>
+                <div id="chatMessages"></div>
+                <div class="chat-input-container">
+                    <textarea id="chatInput" placeholder="Type a message..."></textarea>
+                    <button id="sendChat">Send</button>
+                </div>
+            </div>
+        </aside>
+
+        <div class="video-controls">
+            <button class="video-control-btn" id="toggleMic" aria-label="Toggle microphone">
+               <i class="fas fa-microphone"></i>
+           </button>
+            <button class="video-control-btn" id="toggleCamera" aria-label="Toggle camera">
+               <i class="fas fa-video"></i>
+           </button>
+            <button class="video-control-btn" id="toggleScreen" aria-label="Toggle screen sharing">
+               <i class="fas fa-desktop"></i>
+           </button>
+            <button class="video-control-btn" id="exitRoom" aria-label="Exit room">
+               <i class="fas fa-phone-slash"></i>
+           </button>
+        </div>
+
+        <!-- Voice Chat Panel -->
+        <aside id="voiceChatPanel" class="voice-chat-panel">
+            <div class="panel-header">
+                <h3>Voice Chat</h3>
+                <button id="closeVoiceChat" class="panel-close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="voiceChatUsers" class="voice-chat-users"></div>
+            <div class="voice-chat-controls">
+                <button id="muteAudio" class="voice-chat-btn"><i class="fas fa-microphone-slash"></i> Mute</button>
+                <div class="volume-control">
+                    <label for="volumeSlider">Volume</label>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="100">
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- File Modal -->
+    <div id="fileModal" class="modal">
+        <div class="modal-content">
+            <h3>Create New File</h3>
+            <input type="text" id="fileNameInput" placeholder="File name">
+            <select id="fileTypeInput">
+               <option value=".js">JavaScript</option>
+               <option value=".html">HTML</option>
+               <option value=".css">CSS</option>
+               <option value=".py">Python</option>
+               <option value=".java">Java</option>
+               <option value=".c">C</option>
+           </select>
+            <p id="errorMessage" style="color: red; display: none;"></p>
+            <button id="submitFileDetails">Create</button>
+            <button id="closeModal">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Permission Request Modal -->
+    <div id="permissionModal" class="modal">
+        <div class="modal-content">
+            <h3>Permission Request</h3>
+            <p id="permissionMessage"></p>
+            <div>
+                <button id="approvePermission" class="btn-primary">Approve</button>
+                <button id="denyPermission" class="btn-secondary">Deny</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Annotation Modal -->
+    <div id="annotationModal" class="modal">
+        <div class="modal-content">
+            <h3>Add Annotation</h3>
+            <p id="annotationLineInfo"></p>
+            <textarea id="annotationText" placeholder="Enter your annotation here..." rows="4"></textarea>
+            <div>
+                <button id="submitAnnotation" class="btn-primary">Add</button>
+                <button id="cancelAnnotation" class="btn-secondary  class=" btn-primary ">Add</button>
+                <button id="cancelAnnotation " class="btn-secondary ">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts.js "></script>
+    <script src="collaboration.js "></script>
+</body>
+
+</html>
